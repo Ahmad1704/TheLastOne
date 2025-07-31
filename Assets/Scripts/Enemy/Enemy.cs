@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.AI;
+using System.Collections;
 
 public class Enemy : MonoBehaviour
 {
@@ -57,13 +58,27 @@ public class Enemy : MonoBehaviour
     #region Unity Lifecycle Methods
     void Awake()
     {
-
         GetComponents();
         CreateStateInstances();
         CacheOriginalValues();
         
         SetupNavMeshAgent();
         SetupGlowingEyes();
+        
+        // Subscribe to health events
+        if (healthComponent != null)
+        {
+            healthComponent.OnDeath += OnHealthDepleted;
+        }
+    }
+
+    void OnDestroy()
+    {
+        // Unsubscribe from health events to prevent memory leaks
+        if (healthComponent != null)
+        {
+            healthComponent.OnDeath -= OnHealthDepleted;
+        }
     }
 
     void Update()
@@ -75,14 +90,8 @@ public class Enemy : MonoBehaviour
                 UpdateMovementAnimation();
             }
 
-            if (healthComponent != null && healthComponent.gameObject == null)
-            {
-                stateMachine.ChangeState(deadState);
-            }
-            else
-            {
-                stateMachine.Update();
-            }
+            // Let the state machine handle updates
+            stateMachine.Update();
         }
     }
 
@@ -104,8 +113,6 @@ public class Enemy : MonoBehaviour
 
     private void GetComponents()
     {
-       
-        
         navAgent = GetComponent<NavMeshAgent>();
         if (navAgent == null)
         {
@@ -114,6 +121,7 @@ public class Enemy : MonoBehaviour
         healthComponent = GetComponent<Health>();
         animator = GetComponentInChildren<Animator>();
     }
+    
     private void CreateStateInstances()
     {
         basicState = new BasicMovementState();
@@ -226,17 +234,66 @@ public class Enemy : MonoBehaviour
     }
     #endregion
 
+    #region Health Event Handlers
+    private void OnHealthDepleted()
+    {
+        if (!isDead)
+        {
+            Debug.Log($"Health depleted for {gameObject.name}, changing to dead state");
+            
+            // Stop NavMesh movement immediately
+            if (navAgent != null && navAgent.enabled)
+            {
+                navAgent.isStopped = true;
+                navAgent.velocity = Vector3.zero;
+            }
+            
+            // Trigger death animation directly here as well as a backup
+            if (animator != null)
+            {
+                Debug.Log($"Triggering death animation directly for {gameObject.name}");
+                animator.SetTrigger("Die");
+            }
+            
+            stateMachine.ChangeState(deadState);
+        }
+    }
+    #endregion
+
     #region Public Methods
     public void OnEnemyDied()
     {
         if (isDead) return;
-
         isDead = true;
+        Debug.Log($"Enemy {gameObject.name} died");
+        
+        // Notify wave manager immediately to decrement counter
         waveManager?.OnEnemyDestroyed(this);
+        
+        // Start the death sequence
+        if (gameObject.activeInHierarchy)
+        {
+            StartCoroutine(DelayedDeactivate());
+        }
+        else
+        {
+            // If already inactive, just handle cleanup immediately
+            ResetForPool();
+            waveManager?.OnEnemyReadyForPool(this, gameObject);
+        }
+    }
+
+    private IEnumerator DelayedDeactivate()
+    {
+        yield return new WaitForSeconds(2f); // adjust based on death animation length
+        ResetForPool();
+        waveManager?.OnEnemyReadyForPool(this, gameObject);
     }
 
     public void ResetForPool()
     {
+        isDead = false; // Reset the dead flag for pooling
+        
         if (healthComponent != null)
             healthComponent.ResetHealth();
 
@@ -244,6 +301,13 @@ public class Enemy : MonoBehaviour
         {
             navAgent.isStopped = true;
             navAgent.ResetPath();
+        }
+
+        // Reset animator state
+        if (animator != null)
+        {
+            animator.ResetTrigger("Die");
+            animator.SetFloat("Speed", 0f);
         }
 
         cachedTransform.position = Vector3.zero;

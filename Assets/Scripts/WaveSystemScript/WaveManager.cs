@@ -44,18 +44,20 @@ public class WaveManager : MonoBehaviour
         InitializeEnemyPool();
         CacheUIButtonTexts();
         SetupButtonListeners();
-
     }
+    
     private void Start()
     {
         waveCoroutine = StartCoroutine(WaveLoop());
     }
+    
     private void Update()
     {
         UpdateUI();
         UpdateFPS();
         HandleKeyboardInput();
     }
+    
     private void HandleKeyboardInput()
     {
         if (Input.GetKeyDown(KeyCode.Alpha1))
@@ -73,17 +75,20 @@ public class WaveManager : MonoBehaviour
             DestroyCurrentWave();
         }
     }
+    
     private void InitializeEnemyPool()
     {
         enemyPool = GetComponent<EnemyPool>() ?? gameObject.AddComponent<EnemyPool>();
         enemyPool.Initialize(enemyPrefabs);
     }
+    
     private void CacheUIButtonTexts()
     {
         stopResumeButtonText = stopResumeButton.GetComponentInChildren<TextMeshProUGUI>();
         nextWaveButtonText = nextWaveButton.GetComponentInChildren<TextMeshProUGUI>();
         destroyWaveButtonText = destroyWaveButton.GetComponentInChildren<TextMeshProUGUI>();
     }
+    
     private void SetupButtonListeners()
     {
         stopResumeButton.onClick.AddListener(ToggleWaves);
@@ -189,8 +194,16 @@ public class WaveManager : MonoBehaviour
         if (!activeEnemies.Remove(enemy)) return;
 
         activeEnemyCount--;
-        enemy.ResetForPool();
-        enemyPool.ReturnEnemy(enemy.gameObject);
+        
+        // Don't immediately reset and return to pool here
+        // Let the enemy handle its own death sequence and pooling
+        // This prevents the GameObject from being deactivated before death animation completes
+    }
+    
+    // New method for when enemy is fully processed and ready for pooling
+    public void OnEnemyReadyForPool(Enemy enemy, GameObject enemyGameObject)
+    {
+        enemyPool.ReturnEnemy(enemyGameObject);
     }
 
     public void ToggleWaves()
@@ -216,6 +229,7 @@ public class WaveManager : MonoBehaviour
             waveCoroutine = StartCoroutine(WaveLoop());
         }
     }
+    
     public void DestroyCurrentWave()
     {
         for (int i = activeEnemies.Count - 1; i >= 0; i--)
