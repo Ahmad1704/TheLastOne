@@ -141,7 +141,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   moveSpeed: 5
-  enemyType: 0
+  enemyType: 2
   eyeGlowMaterial: {fileID: 0}
   eyeTransforms: []
   stoppingDistance: 1
@@ -246,6 +246,14 @@ PrefabInstance:
     - target: {fileID: 1776966266084158026, guid: f99bbd0754201f448b27f0c455b92b76, type: 3}
       propertyPath: m_Name
       value: Zombie
+      objectReference: {fileID: 0}
+    - target: {fileID: 4972802055694576266, guid: f99bbd0754201f448b27f0c455b92b76, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 9100000, guid: 2d18fd4ba96bbf64ca5e8007ffff7ca2, type: 2}
+    - target: {fileID: 4972802055694576266, guid: f99bbd0754201f448b27f0c455b92b76, type: 3}
+      propertyPath: m_ApplyRootMotion
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

@@ -2761,7 +2761,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9b2f9ed19ecbc124aa9df7469bdce1ce, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  baseEnemyCount: 30
   enemyIncreasePerWave: 20
   timeBetweenWaves: 5
   arenaRadius: 40
