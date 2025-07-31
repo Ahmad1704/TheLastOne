@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 596f8e172d2691f4fb0e359047539ba0, type: 3}
+  m_Name: Sniper
+  m_EditorClassIdentifier: 
+  weaponName: M1Garand
+  weaponPrefab: {fileID: 4698201593948852689, guid: 185ce04d44da342739f0bef843698e6c, type: 3}
+  bulletPrefab: {fileID: 5713157893610732360, guid: 1ef26a907b8422a438211f3159d5e54c, type: 3}
+  damage: 50
+  fireRate: 0.5
+  bulletSpeed: 40
+  range: 500
+  ammoType: 3
+  magazineSize: 3
+  reloadTime: 5
+  canReloadPartially: 1
+  reloadType: 1
+  shellsPerReload: 1
+  shellReloadTime: 0.8
+  canCancelReload: 1
+  bulletSpawnOverride: {fileID: 0}
+  fireSound: {fileID: 0}
+  reloadSound: {fileID: 0}
+  emptySound: {fileID: 0}
+  shellInsertSound: {fileID: 0}
