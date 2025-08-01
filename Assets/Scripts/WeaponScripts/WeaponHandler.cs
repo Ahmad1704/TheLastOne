@@ -44,18 +44,29 @@ public class WeaponHandler : MonoBehaviour
         UpdateAmmoUI();
     }
 
-    private Vector3 GetFireDirection()
+   private Vector3 GetFireDirection()
+{
+    if (playerCamera == null)
+        return currentFirePoint.forward;
+
+    // Cast a ray from camera center to find where we're actually aiming
+    Ray centerRay = playerCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0));
+    
+    // Try to hit something in the world first
+    Vector3 targetPoint;
+    if (Physics.Raycast(centerRay, out RaycastHit hit, currentWeapon.range))
     {
-        if (playerCamera == null)
-            return currentFirePoint.forward;
-
-        // Get camera's center point
-        Ray centerRay = playerCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0));
-        Vector3 targetPoint = centerRay.GetPoint(100f); // Distance doesn't matter for direction
-
-        // Calculate direction from fire point to target
-        return (targetPoint - currentFirePoint.position).normalized;
+        targetPoint = hit.point;
     }
+    else
+    {
+        // If nothing is hit, use a point far away in the camera's forward direction
+        targetPoint = centerRay.origin + centerRay.direction * currentWeapon.range;
+    }
+
+    // Calculate direction from fire point to the target point
+    return (targetPoint - currentFirePoint.position).normalized;
+}
 
     private void SetupWeaponInstance()
     {

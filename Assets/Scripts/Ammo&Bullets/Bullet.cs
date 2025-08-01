@@ -39,7 +39,8 @@ public class Bullet : MonoBehaviour
         }
     }
 
-    private void OnTriggerEnter(Collider other)
+    // This method is called by the BulletCollisionHandler on the child collider
+    public void HandleCollision(Collider other)
     {
         if (other.TryGetComponent<IDamageable>(out var damageable))
         {

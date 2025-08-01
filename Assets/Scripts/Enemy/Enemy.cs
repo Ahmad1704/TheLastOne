@@ -44,6 +44,7 @@ public class Enemy : MonoBehaviour
     private float originalMoveSpeed;
     private Vector3 originalScale;
     private float currentSmoothedSpeed;
+    private bool isNavAgentReady = false;
     #endregion
 
     #region Properties
@@ -53,6 +54,7 @@ public class Enemy : MonoBehaviour
     public Vector3 OriginalScale => originalScale;
     public Transform CachedTransform => cachedTransform;
     public Animator Animator => animator;
+    public bool IsNavAgentReady => isNavAgentReady;
     #endregion
 
     #region Unity Lifecycle Methods
@@ -85,7 +87,7 @@ public class Enemy : MonoBehaviour
     {
         if (!isDead)
         {
-            if (navAgent != null && animator != null)
+            if (navAgent != null && animator != null && isNavAgentReady)
             {
                 UpdateMovementAnimation();
             }
@@ -97,7 +99,7 @@ public class Enemy : MonoBehaviour
 
     void OnDrawGizmosSelected()
     {
-        if (navAgent != null && navAgent.hasPath)
+        if (navAgent != null && navAgent.hasPath && isNavAgentReady)
         {
             Gizmos.color = Color.yellow;
             Vector3[] pathCorners = navAgent.path.corners;
@@ -149,17 +151,58 @@ public class Enemy : MonoBehaviour
 
         ApplyTypeModifications();
         
+        // Setup NavMesh agent properly
         if (navAgent != null)
         {
             navAgent.speed = moveSpeed;
-            navAgent.enabled = false;
+            navAgent.enabled = true; // Enable first
+            
+            // Wait a frame for NavMesh to be ready, then start spawning
+            StartCoroutine(WaitForNavMeshAndStart());
+        }
+        else
+        {
+            // If no NavMesh agent, start immediately
+            StartSpawning();
         }
 
         if (healthComponent != null)
         {
             healthComponent.ResetHealth();
         }
+    }
+
+    private IEnumerator WaitForNavMeshAndStart()
+    {
+        // Wait a frame to ensure NavMesh is ready
+        yield return null;
         
+        // Check if agent is on NavMesh
+        if (navAgent.isOnNavMesh)
+        {
+            isNavAgentReady = true;
+            StartSpawning();
+        }
+        else
+        {
+            // Try to warp to NavMesh
+            NavMeshHit hit;
+            if (NavMesh.SamplePosition(cachedTransform.position, out hit, 10f, NavMesh.AllAreas))
+            {
+                navAgent.Warp(hit.position);
+                isNavAgentReady = true;
+                StartSpawning();
+            }
+            else
+            {
+                Debug.LogError($"Could not place {gameObject.name} on NavMesh at position {cachedTransform.position}");
+                isNavAgentReady = false;
+            }
+        }
+    }
+
+    private void StartSpawning()
+    {
         stateMachine.ChangeState(spawningState);
     }
     #endregion
@@ -203,20 +246,32 @@ public class Enemy : MonoBehaviour
             GameObject eye = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             eye.transform.SetParent(eyeTransform, false);
             eye.transform.localPosition = Vector3.zero;
-            eye.transform.localScale = Vector3.one * 0.2f;
+            eye.transform.localScale = Vector3.one;
 
             Renderer eyeRenderer = eye.GetComponent<Renderer>();
-            eyeRenderer.material = eyeGlowMaterial;
-            eyeRenderer.material.EnableKeyword("_EMISSION");
+            
+            // Create a new material instance to avoid modifying the shared material
+            Material eyeMaterial = new Material(eyeGlowMaterial);
+            eyeRenderer.material = eyeMaterial;
             
             Color eyeColor = enemyType switch
             {
-                EnemyType.Fast => Color.yellow,
-                EnemyType.Heavy => Color.blue,
+                EnemyType.Fast => Color.blue,
+                EnemyType.Heavy => Color.yellow,
                 _ => Color.red
             };
             
-            eyeRenderer.material.SetColor("_EmissionColor", eyeColor * 2f);
+            // Set up emission properly
+            eyeMaterial.EnableKeyword("_EMISSION");
+            eyeMaterial.SetColor("_EmissionColor", eyeColor * 3f);
+            
+            // Also set the base color for non-emissive rendering
+            eyeMaterial.SetColor("_Color", eyeColor);
+            eyeMaterial.SetColor("_BaseColor", eyeColor); // For URP
+            
+            // Ensure the material is set to emissive mode
+            eyeMaterial.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
+            
             Destroy(eye.GetComponent<Collider>());
         }
     }
@@ -242,7 +297,7 @@ public class Enemy : MonoBehaviour
             Debug.Log($"Health depleted for {gameObject.name}, changing to dead state");
             
             // Stop NavMesh movement immediately
-            if (navAgent != null && navAgent.enabled)
+            if (navAgent != null && navAgent.enabled && navAgent.isOnNavMesh)
             {
                 navAgent.isStopped = true;
                 navAgent.velocity = Vector3.zero;
@@ -293,6 +348,7 @@ public class Enemy : MonoBehaviour
     public void ResetForPool()
     {
         isDead = false; // Reset the dead flag for pooling
+        isNavAgentReady = false; // Reset NavMesh ready flag
         
         if (healthComponent != null)
             healthComponent.ResetHealth();
