@@ -177,12 +177,15 @@ public class WaveManager : MonoBehaviour
     private void SpawnRandomEnemy()
     {
         Vector2 pos2D = Random.insideUnitCircle.normalized * arenaRadius;
-        Vector3 spawnPos = new Vector3(pos2D.x, 0, pos2D.y);
 
         int typeIndex = Random.Range(0, enemyPrefabs.Length);
         GameObject enemyObj = enemyPool.GetEnemy(typeIndex);
 
         if (!enemyObj) return;
+
+        // Calculate proper Y position based on model bounds
+        float yOffset = CalculateYOffset(enemyObj);
+        Vector3 spawnPos = new Vector3(pos2D.x, yOffset, pos2D.y);
 
         enemyObj.transform.position = spawnPos;
         enemyObj.SetActive(true);
@@ -194,6 +197,26 @@ public class WaveManager : MonoBehaviour
             activeEnemyCount++;
         }
     }
+
+
+    private float CalculateYOffset(GameObject enemyObj)
+    {
+        // Get the renderer bounds to calculate proper Y offset
+        Renderer renderer = enemyObj.GetComponentInChildren<Renderer>();
+        if (renderer != null)
+        {
+            // Get the bottom of the model's bounds
+            float modelHeight = renderer.bounds.size.y;
+            float bottomOffset = renderer.bounds.center.y - renderer.bounds.min.y;
+
+            // Position so the bottom of the model is at y=0
+            return bottomOffset;
+        }
+
+        // Fallback to a reasonable default
+        return 1f;
+    }
+
 
     public void OnEnemyDestroyed(Enemy enemy)
     {

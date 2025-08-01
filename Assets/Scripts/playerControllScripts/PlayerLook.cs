@@ -20,8 +20,6 @@ public class PlayerLook : MonoBehaviour, IPlayerInputHandler
         }
         
         // Initialize cursor state
-       // Cursor.lockState = CursorLockMode.Locked;
-       // Cursor.visible = false;
         
         // Initialize pitch from current rotation
         if (cameraHolder != null)
@@ -54,12 +52,5 @@ public class PlayerLook : MonoBehaviour, IPlayerInputHandler
         
         if (cameraHolder != null)
             cameraHolder.localEulerAngles = new Vector3(pitch, 0f, 0f);
-    }
-
-    private void OnDestroy()
-    {
-        // Reset cursor state when destroyed
-        Cursor.lockState = CursorLockMode.None;
-        Cursor.visible = true;
     }
 }

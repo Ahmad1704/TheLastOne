@@ -57,8 +57,8 @@ public class SpawningState : IEnemyState
                     else
                     {
                         Debug.LogWarning($"Could not place {enemy.gameObject.name} on NavMesh during spawn transition");
-                        // Stay in spawning state and try again next frame
-                        spawnTimer = spawnDuration - 0.1f; // Retry in 0.1 seconds
+                  
+                        spawnTimer = spawnDuration - 0.1f;
                     }
                 }
             }
