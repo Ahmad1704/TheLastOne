@@ -28,13 +28,24 @@ public class WeaponHandler : MonoBehaviour
     public System.Action OnWeaponEmpty;
 
     private void Start()
-    {
-        if (playerCamera == null)
+{
+    if (playerCamera == null)
         playerCamera = Camera.main; 
 
-        if (currentWeapon != null)
-            InitializeWeapon();
+    if (currentWeapon != null)
+        InitializeWeapon();
+    
+    // Register with UIManager
+    if (UIManager.Instance != null)
+    {
+        UIManager.Instance.RegisterWeaponHandler(this);
+        Debug.Log("[WeaponHandler] Registered with UIManager");
     }
+    else
+    {
+        Debug.LogWarning("[WeaponHandler] UIManager not found!");
+    }
+}
 
     public void InitializeWeapon()
     {
@@ -43,30 +54,23 @@ public class WeaponHandler : MonoBehaviour
         SetupWeaponInstance();
         UpdateAmmoUI();
     }
-
-   private Vector3 GetFireDirection()
-{
-    if (playerCamera == null)
-        return currentFirePoint.forward;
-
-    // Cast a ray from camera center to find where we're actually aiming
-    Ray centerRay = playerCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0));
-    
-    // Try to hit something in the world first
-    Vector3 targetPoint;
-    if (Physics.Raycast(centerRay, out RaycastHit hit, currentWeapon.range))
+    private Vector3 GetTargetPoint()
     {
-        targetPoint = hit.point;
-    }
-    else
-    {
-        // If nothing is hit, use a point far away in the camera's forward direction
-        targetPoint = centerRay.origin + centerRay.direction * currentWeapon.range;
+        Ray ray = playerCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0));
+        return Physics.Raycast(ray, out RaycastHit hit, currentWeapon.range)
+            ? hit.point
+            : ray.GetPoint(currentWeapon.range);
     }
 
-    // Calculate direction from fire point to the target point
-    return (targetPoint - currentFirePoint.position).normalized;
-}
+    private Vector3 GetFireDirection()
+    {
+        if (playerCamera == null)
+            return currentFirePoint.forward;
+
+        Vector3 targetPoint = GetTargetPoint();
+        return (targetPoint - currentFirePoint.position).normalized;
+    }
+
 
     private void SetupWeaponInstance()
     {
@@ -122,19 +126,20 @@ public class WeaponHandler : MonoBehaviour
             return;
         }
 
-        Vector3 fireDirection = GetFireDirection();
-        // Convert direction to rotation for bullet spawning
-        Quaternion fireRotation = Quaternion.LookRotation(fireDirection);
+        Vector3 targetPoint = GetTargetPoint();
+        Vector3 direction = (targetPoint - currentFirePoint.position).normalized;
+        Quaternion fireRotation = Quaternion.LookRotation(direction);
+
         SpawnBullet(currentFirePoint.position, fireRotation);
         currentAmmoInMag--;
 
         PlaySound(currentWeapon.fireSound);
+
         if (currentAmmoInMag <= 0)
             isEmpty = true;
 
         UpdateAmmoUI();
     }
-
     public void FireMultiple(int shotCount)
     {
         if (!CanFire()) return;
@@ -362,10 +367,6 @@ public class WeaponHandler : MonoBehaviour
 
         if (GUILayout.Button("Add 30 Ammo"))
             AmmoManager.Instance.AddAmmo(currentWeapon.ammoType, 30);
-
-        if (GUILayout.Button("Refresh Weapon"))
-            RefreshWeapon();
-
         GUILayout.EndArea();
 #endif
     }

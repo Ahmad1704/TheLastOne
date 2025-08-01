@@ -172,34 +172,47 @@ public class Enemy : MonoBehaviour
         }
     }
 
-    private IEnumerator WaitForNavMeshAndStart()
+   private IEnumerator WaitForNavMeshAndStart()
+{
+    // Wait a frame to ensure NavMesh is ready
+    yield return null;
+    
+    // Check if agent is on NavMesh
+    if (navAgent.isOnNavMesh)
     {
-        // Wait a frame to ensure NavMesh is ready
-        yield return null;
-        
-        // Check if agent is on NavMesh
-        if (navAgent.isOnNavMesh)
+        isNavAgentReady = true;
+        navAgent.isStopped = true; // Start stopped
+        StartSpawning();
+    }
+    else
+    {
+        NavMeshHit hit;
+        if (NavMesh.SamplePosition(cachedTransform.position, out hit, 10f, NavMesh.AllAreas))
         {
+            navAgent.Warp(hit.position);
             isNavAgentReady = true;
+            navAgent.isStopped = true; // Start stopped
             StartSpawning();
         }
         else
         {
-            // Try to warp to NavMesh
-            NavMeshHit hit;
-            if (NavMesh.SamplePosition(cachedTransform.position, out hit, 10f, NavMesh.AllAreas))
+            Debug.LogError($"Could not place {gameObject.name} on NavMesh at position {cachedTransform.position}");
+            isNavAgentReady = false;
+            // Try to find a better spawn position
+            Vector3 randomPos = cachedTransform.position + Random.insideUnitSphere * 5f;
+            randomPos.y = cachedTransform.position.y;
+            
+            if (NavMesh.SamplePosition(randomPos, out hit, 10f, NavMesh.AllAreas))
             {
+                cachedTransform.position = hit.position;
                 navAgent.Warp(hit.position);
                 isNavAgentReady = true;
+                navAgent.isStopped = true;
                 StartSpawning();
-            }
-            else
-            {
-                Debug.LogError($"Could not place {gameObject.name} on NavMesh at position {cachedTransform.position}");
-                isNavAgentReady = false;
             }
         }
     }
+}
 
     private void StartSpawning()
     {
@@ -294,8 +307,6 @@ public class Enemy : MonoBehaviour
     {
         if (!isDead)
         {
-            Debug.Log($"Health depleted for {gameObject.name}, changing to dead state");
-            
             // Stop NavMesh movement immediately
             if (navAgent != null && navAgent.enabled && navAgent.isOnNavMesh)
             {

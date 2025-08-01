@@ -123,9 +123,14 @@ public class WaveManager : MonoBehaviour
             if (!wavesPaused)
             {
                 yield return StartCoroutine(SpawnWaveCoroutine());
-                yield return new WaitUntil(() => activeEnemyCount == 0);
 
-                if (!wavesPaused)
+                // Skip the "wait for enemies to die" part when manually spawning
+                if (!waitingForNextWave)
+                {
+                    yield return new WaitUntil(() => activeEnemyCount == 0);
+                }
+
+                if (!wavesPaused && !waitingForNextWave)
                 {
                     waitingForNextWave = true;
                     yield return new WaitForSeconds(timeBetweenWaves);
@@ -137,6 +142,7 @@ public class WaveManager : MonoBehaviour
             yield return null;
         }
     }
+
 
     private IEnumerator SpawnWaveCoroutine()
     {
@@ -195,12 +201,8 @@ public class WaveManager : MonoBehaviour
 
         activeEnemyCount--;
         
-        // Don't immediately reset and return to pool here
-        // Let the enemy handle its own death sequence and pooling
-        // This prevents the GameObject from being deactivated before death animation completes
     }
     
-    // New method for when enemy is fully processed and ready for pooling
     public void OnEnemyReadyForPool(Enemy enemy, GameObject enemyGameObject)
     {
         enemyPool.ReturnEnemy(enemyGameObject);
@@ -218,17 +220,18 @@ public class WaveManager : MonoBehaviour
 
     public void SpawnNextWave()
     {
-        if (waitingForNextWave || wavesPaused)
+        // Always allow spawning next wave, regardless of current state
+        if (waveCoroutine != null)
         {
-            if (waveCoroutine != null)
-            {
-                StopCoroutine(waveCoroutine);
-            }
-
-            currentWave++;
-            waveCoroutine = StartCoroutine(WaveLoop());
+            StopCoroutine(waveCoroutine);
         }
+
+        currentWave++;
+        waitingForNextWave = false; // Reset waiting state
+        wavesPaused = false; // Ensure waves aren't paused
+        waveCoroutine = StartCoroutine(WaveLoop());
     }
+
     
     public void DestroyCurrentWave()
     {
