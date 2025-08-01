@@ -5,8 +5,6 @@ public class Health : MonoBehaviour, IDamageable
 {
     public float maxHealth = 100f;
     private float currentHealth;
-    
-    // Events for better integration
     public event Action<float> OnHealthChanged;
     public event Action OnDeath;
     
@@ -17,7 +15,7 @@ public class Health : MonoBehaviour, IDamageable
 
     public void TakeDamage(float amount)
     {
-        if (currentHealth <= 0) return; // Already dead
+        if (currentHealth <= 0) return; 
         
         currentHealth -= amount;
         OnHealthChanged?.Invoke(currentHealth);

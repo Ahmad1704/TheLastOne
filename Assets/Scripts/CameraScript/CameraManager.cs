@@ -2,6 +2,8 @@ using UnityEngine;
 
 public class CameraManager : MonoBehaviour
 {
+    #region Fields & Settings
+
     [Header("Camera Settings")]
     public Camera mainCamera;
     public float moveSpeed = 5f;
@@ -28,38 +30,40 @@ public class CameraManager : MonoBehaviour
     private Transform cameraHolder;
     private Transform originalCameraParent;
     private BoxCollider movementBounds;
-    
+
     // Free camera state
     private Vector3 freeCameraPosition;
     private Quaternion freeCameraRotation;
     private float yaw;
     private float pitch;
     private bool cursorLocked = true;
-    
+
     // First person state
     private Vector3 firstPersonVelocity;
+
+    #endregion
+
+    #region Unity Events
 
     private void Awake()
     {
         movementBounds = GetComponent<BoxCollider>();
     }
+
     void Start()
     {
-        // Initialize camera
         if (mainCamera == null)
             mainCamera = Camera.main;
 
-        // Store original camera parent
         originalCameraParent = mainCamera.transform.parent;
 
-        // Start in free camera mode
         InitializeFreeCamera();
     }
 
     void Update()
     {
         HandleInput();
-        
+
         if (isFirstPerson && currentPlayer != null)
         {
             UpdateFirstPersonCamera();
@@ -68,38 +72,81 @@ public class CameraManager : MonoBehaviour
         {
             UpdateFreeCamera();
         }
-
     }
+
+    void OnGUI()
+    {
+        if (isFirstPerson) return;
+        DrawDebugGUI();
+    }
+
+    void OnApplicationFocus(bool hasFocus)
+    {
+        if (hasFocus && cursorLocked)
+        {
+            LockCursor(true);
+        }
+    }
+
+    #endregion
+
+    #region Camera Modes
 
     void InitializeFreeCamera()
     {
         freeCameraPosition = mainCamera.transform.position;
         freeCameraRotation = mainCamera.transform.rotation;
-        
+
         Vector3 eulerAngles = mainCamera.transform.eulerAngles;
         yaw = eulerAngles.y;
         pitch = NormalizePitch(eulerAngles.x);
-        
+
         isFirstPerson = false;
-        
+
         Debug.Log("Free Camera Mode: Initialized");
     }
 
+    void ToggleMode()
+    {
+        isFirstPerson = !isFirstPerson;
+
+        if (isFirstPerson)
+        {
+            SpawnPlayer();
+            LockCursor(true);
+            Debug.Log("FIRST PERSON MODE: Player spawned and camera attached");
+        }
+        else
+        {
+            DestroyPlayer();
+            DetachCamera();
+            mainCamera.transform.position = freeCameraPosition;
+            mainCamera.transform.rotation = freeCameraRotation;
+
+            Vector3 eulerAngles = freeCameraRotation.eulerAngles;
+            yaw = eulerAngles.y;
+            pitch = NormalizePitch(eulerAngles.x);
+
+            Debug.Log("FREE CAMERA MODE: Player destroyed, free camera restored");
+        }
+    }
+
+    #endregion
+
+    #region Input Handling
+
     void HandleInput()
     {
-        // Toggle between modes - ALWAYS ACTIVE
         if (Input.GetKeyDown(toggleModeKey))
         {
             ToggleMode();
         }
 
-        // Cursor control - ALWAYS ACTIVE
         if (Input.GetKeyDown(KeyCode.Escape))
         {
             LockCursor(!cursorLocked);
         }
 
-        // ONLY PROCESS MOUSE LOOK IN FREE CAMERA MODE
         if (cursorLocked && !isFirstPerson)
         {
             HandleMouseLook();
@@ -118,27 +165,27 @@ public class CameraManager : MonoBehaviour
         pitch = Mathf.Clamp(pitch, -90f, 90f);
     }
 
+    #endregion
+
+    #region Free Camera Logic
+
     void UpdateFreeCamera()
     {
-        // Ensure no player is active in free camera mode
         if (currentPlayer != null)
         {
             DestroyPlayer();
         }
 
-        // Ensure camera is detached from any parent
         if (mainCamera.transform.parent != originalCameraParent)
         {
             DetachCamera();
         }
 
-        // Handle camera rotation
         if (cursorLocked)
         {
             mainCamera.transform.rotation = Quaternion.Euler(pitch, yaw, 0);
         }
 
-        // Handle camera movement
         Vector3 moveInput = Vector3.zero;
         if (Input.GetKey(KeyCode.W)) moveInput += Vector3.forward;
         if (Input.GetKey(KeyCode.S)) moveInput += Vector3.back;
@@ -149,9 +196,8 @@ public class CameraManager : MonoBehaviour
 
         float currentMoveSpeed = Input.GetKey(fastMoveKey) ? fastMoveSpeed : moveSpeed;
         Vector3 movement = mainCamera.transform.TransformDirection(moveInput) * currentMoveSpeed * Time.deltaTime;
-       Vector3 newPosition = mainCamera.transform.position + movement;
+        Vector3 newPosition = mainCamera.transform.position + movement;
 
-        // Clamp position within bounds if bounds are available
         if (movementBounds != null)
         {
             Bounds bounds = movementBounds.bounds;
@@ -160,11 +206,16 @@ public class CameraManager : MonoBehaviour
             newPosition.y = Mathf.Clamp(newPosition.y, bounds.min.y, bounds.max.y);
             newPosition.z = Mathf.Clamp(newPosition.z, bounds.min.z, bounds.max.z);
         }
+
         mainCamera.transform.position = newPosition;
-        // Store free camera state
+
         freeCameraPosition = mainCamera.transform.position;
         freeCameraRotation = mainCamera.transform.rotation;
     }
+
+    #endregion
+
+    #region First Person Logic
 
     void UpdateFirstPersonCamera()
     {
@@ -175,53 +226,16 @@ public class CameraManager : MonoBehaviour
             return;
         }
 
-        if (useParenting)
+        if (!useParenting)
         {
-            // Position handled by parenting, rotation handled by PlayerController
-            // NO ROTATION CODE HERE
-        }
-        else
-        {
-            // Manual positioning only
             Vector3 targetPosition = cameraHolder.position;
-            
+
             mainCamera.transform.position = Vector3.SmoothDamp(
                 mainCamera.transform.position,
                 targetPosition,
                 ref firstPersonVelocity,
                 firstPersonSmoothSpeed * Time.deltaTime
             );
-            
-            // Rotation is handled by PlayerController - NO ROTATION CODE
-        }
-    }
-
-    void ToggleMode()
-    {
-        isFirstPerson = !isFirstPerson;
-
-        if (isFirstPerson)
-        {
-            // Switch to First Person - Spawn Player
-            SpawnPlayer();
-            LockCursor(true);
-            Debug.Log("FIRST PERSON MODE: Player spawned and camera attached");
-        }
-        else
-        {
-            // Switch to Free Camera - Destroy Player
-            DestroyPlayer();
-            
-            // Detach camera and restore free camera position
-            DetachCamera();
-            mainCamera.transform.position = freeCameraPosition;
-            mainCamera.transform.rotation = freeCameraRotation;
-            
-            Vector3 eulerAngles = freeCameraRotation.eulerAngles;
-            yaw = eulerAngles.y;
-            pitch = NormalizePitch(eulerAngles.x);
-            
-            Debug.Log("FREE CAMERA MODE: Player destroyed, free camera restored");
         }
     }
 
@@ -239,36 +253,29 @@ public class CameraManager : MonoBehaviour
             return;
         }
 
-        // Determine spawn position
         Vector3 spawnPosition = GetSpawnPosition();
-        
-        // Spawn player
+
         currentPlayer = Instantiate(playerPrefab, spawnPosition, Quaternion.identity);
-        
-        // Get player controller
+
         playerController = currentPlayer.GetComponent<PlayerController>();
         if (playerController != null)
         {
             playerController.enabled = true;
         }
 
-        // Find CameraHolder in the player
         FindCameraHolder();
 
         if (cameraHolder != null)
         {
-            // Attach camera to CameraHolder
             AttachCamera();
         }
         else
         {
             Debug.LogWarning($"CameraHolder '{cameraHolderName}' not found in player! Using fallback positioning.");
-            // Position camera at player + offset as fallback
-            mainCamera.transform.position = currentPlayer.transform.position + 
-                currentPlayer.transform.TransformDirection(firstPersonOffset);
+            mainCamera.transform.position = currentPlayer.transform.position +
+                                            currentPlayer.transform.TransformDirection(firstPersonOffset);
         }
-        
-        // Match player's rotation
+
         yaw = currentPlayer.transform.eulerAngles.y;
 
         Debug.Log($"Player spawned at: {spawnPosition}");
@@ -279,30 +286,31 @@ public class CameraManager : MonoBehaviour
     {
         if (currentPlayer != null)
         {
-            // Detach camera before destroying player
             DetachCamera();
-            
+
             Destroy(currentPlayer);
             currentPlayer = null;
             playerController = null;
             cameraHolder = null;
-            
+
             Debug.Log("Player destroyed and camera detached");
         }
     }
+
+    #endregion
+
+    #region Camera Parenting & Helpers
 
     void FindCameraHolder()
     {
         if (currentPlayer == null) return;
 
-        // Try to find CameraHolder by name
         cameraHolder = FindChildByName(currentPlayer.transform, cameraHolderName);
-        
+
         if (cameraHolder == null)
         {
             Debug.LogWarning($"CameraHolder with name '{cameraHolderName}' not found in player hierarchy!");
-            
-            // Try common alternative names
+
             string[] commonNames = { "Head", "Camera", "CameraPosition", "Eyes", "FirstPersonCamera" };
             foreach (string name in commonNames)
             {
@@ -334,11 +342,10 @@ public class CameraManager : MonoBehaviour
     {
         if (cameraHolder != null && useParenting)
         {
-            // Parent camera to CameraHolder
             mainCamera.transform.SetParent(cameraHolder);
-            mainCamera.transform.localPosition =firstPersonOffset;
+            mainCamera.transform.localPosition = firstPersonOffset;
             mainCamera.transform.localRotation = Quaternion.identity;
-            
+
             Debug.Log($"Camera attached to {cameraHolder.name}");
         }
     }
@@ -352,12 +359,14 @@ public class CameraManager : MonoBehaviour
         }
     }
 
+    #endregion
+
+    #region Utility & External Methods
+
     Vector3 GetSpawnPosition()
     {
-        // Use spawn points if available
         if (spawnPoints != null && spawnPoints.Length > 0)
         {
-            // Find closest spawn point to current camera position
             Transform closestSpawn = null;
             float closestDistance = float.MaxValue;
 
@@ -380,10 +389,15 @@ public class CameraManager : MonoBehaviour
             }
         }
 
-        // Fallback to current camera position or default
-        return mainCamera.transform.position.y > 1f ? 
-               new Vector3(mainCamera.transform.position.x, mainCamera.transform.position.y, mainCamera.transform.position.z) : 
-               defaultSpawnPosition;
+        return mainCamera.transform.position.y > 1f ?
+            new Vector3(mainCamera.transform.position.x, mainCamera.transform.position.y, mainCamera.transform.position.z) :
+            defaultSpawnPosition;
+    }
+
+    float NormalizePitch(float angle)
+    {
+        angle = (angle + 180) % 360 - 180;
+        return Mathf.Clamp(angle, -90, 90);
     }
 
     void LockCursor(bool lockCursor)
@@ -393,30 +407,51 @@ public class CameraManager : MonoBehaviour
         Cursor.visible = !lockCursor;
     }
 
-    float NormalizePitch(float angle)
+    public void ForceSpawnPlayer(Vector3 position)
     {
-        angle = (angle + 180) % 360 - 180;
-        return Mathf.Clamp(angle, -90, 90);
+        if (!isFirstPerson)
+        {
+            ToggleMode();
+        }
+
+        if (currentPlayer != null)
+        {
+            currentPlayer.transform.position = position;
+        }
     }
 
-    void OnGUI()
+    public void SetFreeCamera(Vector3 position, Quaternion rotation)
     {
-        if(isFirstPerson)return;
+        if (isFirstPerson)
+        {
+            ToggleMode();
+        }
+
+        mainCamera.transform.position = position;
+        mainCamera.transform.rotation = rotation;
+        freeCameraPosition = position;
+        freeCameraRotation = rotation;
+    }
+
+    void DrawDebugGUI()
+    {
+      
+
         GUIStyle style = new GUIStyle();
         style.fontSize = 16;
         style.normal.textColor = Color.white;
-        
+
         string mode = isFirstPerson ? "First Person (FPS)" : "Free Camera (Spectator)";
         GUI.Label(new Rect(10, 10, 300, 30), $"Mode: {mode}", style);
         GUI.Label(new Rect(10, 30, 300, 30), $"Press '{toggleModeKey}' to toggle mode", style);
-        
+
         if (isFirstPerson)
         {
             GUI.Label(new Rect(10, 50, 300, 30), "Input handled by PlayerController", style);
-            
+
             style.normal.textColor = Color.green;
             GUI.Label(new Rect(10, 70, 300, 30), $"Player: SPAWNED", style);
-            
+
             if (cameraHolder != null)
             {
                 GUI.Label(new Rect(10, 90, 300, 30), $"Camera: ATTACHED to {cameraHolder.name}", style);
@@ -433,22 +468,21 @@ public class CameraManager : MonoBehaviour
             GUI.Label(new Rect(10, 70, 300, 30), "QE - Up/Down", style);
             GUI.Label(new Rect(10, 90, 300, 30), $"Hold '{fastMoveKey}' - Fast move", style);
             GUI.Label(new Rect(10, 110, 300, 30), "Mouse - Look around", style);
-            
+
             style.normal.textColor = Color.cyan;
-            GUI.Label(new Rect(10, 130, 300, 30), "Player: NOT SPAWNED", style); 
+            GUI.Label(new Rect(10, 130, 300, 30), "Player: NOT SPAWNED", style);
             GUI.Label(new Rect(10, 150, 300, 30), "Camera: FREE FLYING", style);
         }
-        
+
         style.normal.textColor = Color.white;
         GUI.Label(new Rect(10, 170, 300, 30), "ESC - Toggle cursor lock", style);
-        
+
         if (!cursorLocked)
         {
             style.normal.textColor = Color.yellow;
             GUI.Label(new Rect(10, 190, 300, 30), "Cursor Unlocked - Click to lock", style);
         }
 
-        // Show spawn info
         if (spawnPoints != null && spawnPoints.Length > 0)
         {
             style.normal.textColor = Color.gray;
@@ -457,38 +491,5 @@ public class CameraManager : MonoBehaviour
         }
     }
 
-    void OnApplicationFocus(bool hasFocus)
-    {
-        if (hasFocus && cursorLocked)
-        {
-            LockCursor(true);
-        }
-    }
-
-    // Public methods for external control
-    public void ForceSpawnPlayer(Vector3 position)
-    {
-        if (!isFirstPerson)
-        {
-            ToggleMode();
-        }
-        
-        if (currentPlayer != null)
-        {
-            currentPlayer.transform.position = position;
-        }
-    }
-
-    public void SetFreeCamera(Vector3 position, Quaternion rotation)
-    {
-        if (isFirstPerson)
-        {
-            ToggleMode();
-        }
-        
-        mainCamera.transform.position = position;
-        mainCamera.transform.rotation = rotation;
-        freeCameraPosition = position;
-        freeCameraRotation = rotation;
-    }
+    #endregion
 }

@@ -4,9 +4,9 @@ public class HeavyChargeState : IEnemyState
     private enum ChargePhase { Preparing, Charging, Cooldown }
     private ChargePhase currentPhase = ChargePhase.Preparing;
     private float phaseTimer;
-    private float prepareTime = 1.5f; // Reduced from 2f
-    private float chargeTime = 1.2f; // Reduced from 1.5f
-    private float cooldownTime = 0.8f; // Reduced from 1f
+    private float prepareTime = 1.5f;
+    private float chargeTime = 1.2f; 
+    private float cooldownTime = 0.8f; 
     private Vector3 chargeTarget;
 
     public void Enter(Enemy enemy)
@@ -34,15 +34,15 @@ public class HeavyChargeState : IEnemyState
         switch (currentPhase)
         {
             case ChargePhase.Preparing:
-                navAgent.speed = enemy.MoveSpeed * 0.4f; // Slightly faster
+                navAgent.speed = enemy.MoveSpeed * 0.4f; 
                 navAgent.acceleration = 4f;
 
                 // Simplified pulsing effect
-                float pulseScale = 1f + Mathf.Sin(phaseTimer * 6f) * 0.08f; // Reduced frequency and amplitude
+                float pulseScale = 1f + Mathf.Sin(phaseTimer * 6f) * 0.08f;
                 enemy.CachedTransform.localScale = enemy.OriginalScale * pulseScale;
 
                 // Less frequent target updates
-                if (phaseTimer % 0.8f < Time.deltaTime) // Increased from 0.5f
+                if (phaseTimer % 0.8f < Time.deltaTime) 
                 {
                     SetChargeTarget(enemy);
                 }
@@ -56,11 +56,11 @@ public class HeavyChargeState : IEnemyState
                 break;
 
             case ChargePhase.Charging:
-                navAgent.speed = enemy.MoveSpeed * 2f; // Reduced from 2.5f
-                navAgent.acceleration = 15f; // Reduced from 20f
+                navAgent.speed = enemy.MoveSpeed * 2f; 
+                navAgent.acceleration = 15f; 
 
                 if (phaseTimer >= chargeTime ||
-                    (!navAgent.pathPending && navAgent.remainingDistance < 1.5f)) // Increased threshold
+                    (!navAgent.pathPending && navAgent.remainingDistance < 1.5f)) 
                 {
                     currentPhase = ChargePhase.Cooldown;
                     phaseTimer = 0f;
@@ -83,7 +83,7 @@ public class HeavyChargeState : IEnemyState
 
     private void SetChargeTarget(Enemy enemy)
     {
-        Vector2 randomOffset = Random.insideUnitCircle * 2f; // Reduced from 3f
+        Vector2 randomOffset = Random.insideUnitCircle * 2f; 
         chargeTarget = new Vector3(randomOffset.x, 0, randomOffset.y);
         enemy.NavAgent.SetDestination(chargeTarget);
     }

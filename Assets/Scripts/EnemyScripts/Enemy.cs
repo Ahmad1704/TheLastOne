@@ -43,6 +43,8 @@ public class Enemy : MonoBehaviour
     private bool isDead = false;
     private float originalMoveSpeed;
     private Vector3 originalScale;
+    private Vector3 originalPosition; // Store original local position
+    private Quaternion originalRotation; // Store original local rotation
     private float currentSmoothedSpeed;
     private bool isNavAgentReady = false;
     #endregion
@@ -140,6 +142,8 @@ public class Enemy : MonoBehaviour
         stateMachine = new EnemyStateMachine(this);
         originalMoveSpeed = moveSpeed;
         originalScale = cachedTransform.localScale;
+        originalPosition = cachedTransform.localPosition;
+        originalRotation = cachedTransform.localRotation;
     }
 
     public void Initialize(WaveManager manager)
@@ -147,9 +151,23 @@ public class Enemy : MonoBehaviour
         waveManager = manager;
         isDead = false;
         moveSpeed = originalMoveSpeed;
+        
+        // Reset scale and rotation, but NOT position (WaveManager handles positioning)
         cachedTransform.localScale = originalScale;
+        cachedTransform.localRotation = originalRotation;
+        // Don't reset position here - it's set by WaveManager after this call
 
         ApplyTypeModifications();
+        
+        // Reset animator state properly
+        if (animator != null)
+        {
+            animator.applyRootMotion = false; // Disable root motion during setup
+            animator.ResetTrigger("Die");
+            animator.SetFloat("Speed", 0f);
+            // Force animator to update to default state
+            animator.Update(0f);
+        }
         
         // Setup NavMesh agent properly
         if (navAgent != null)
@@ -196,7 +214,6 @@ public class Enemy : MonoBehaviour
         }
         else
         {
-            Debug.LogError($"Could not place {gameObject.name} on NavMesh at position {cachedTransform.position}");
             isNavAgentReady = false;
             // Try to find a better spawn position
             Vector3 randomPos = cachedTransform.position + Random.insideUnitSphere * 5f;
@@ -314,13 +331,6 @@ public class Enemy : MonoBehaviour
                 navAgent.velocity = Vector3.zero;
             }
             
-            // Trigger death animation directly here as well as a backup
-            if (animator != null)
-            {
-                Debug.Log($"Triggering death animation directly for {gameObject.name}");
-                animator.SetTrigger("Die");
-            }
-            
             stateMachine.ChangeState(deadState);
         }
     }
@@ -331,7 +341,6 @@ public class Enemy : MonoBehaviour
     {
         if (isDead) return;
         isDead = true;
-        Debug.Log($"Enemy {gameObject.name} died");
         
         // Notify wave manager immediately to decrement counter
         waveManager?.OnEnemyDestroyed(this);
@@ -351,36 +360,56 @@ public class Enemy : MonoBehaviour
 
     private IEnumerator DelayedDeactivate()
     {
-        yield return new WaitForSeconds(2f); // adjust based on death animation length
+        yield return new WaitForSeconds(2f); // Adjust based on death animation length
         ResetForPool();
         waveManager?.OnEnemyReadyForPool(this, gameObject);
     }
 
-    public void ResetForPool()
-    {
-        isDead = false; // Reset the dead flag for pooling
-        isNavAgentReady = false; // Reset NavMesh ready flag
-        
-        if (healthComponent != null)
-            healthComponent.ResetHealth();
+   public void ResetForPool()
+{
+    isDead = false;
+    isNavAgentReady = false;
 
-        if (navAgent != null && navAgent.isOnNavMesh)
+    // Reset Health
+    if (healthComponent != null)
+        healthComponent.ResetHealth();
+
+    // CRITICAL: Reset Animator BEFORE resetting transform
+    if (animator != null)
+    {
+        // Force animator to exit any current state
+        animator.ResetTrigger("Die");
+        animator.SetFloat("Speed", 0f);
+        
+        // Disable root motion to prevent it from affecting transform
+        animator.applyRootMotion = false;
+        
+        // Force animator to update and go to default state
+        animator.Update(0f);
+        
+        // Rebind the animator to reset any internal state
+        animator.Rebind();
+    }
+
+    // Reset NavMeshAgent
+    if (navAgent != null)
+    {
+        if (navAgent.isOnNavMesh)
         {
             navAgent.isStopped = true;
             navAgent.ResetPath();
         }
 
-        // Reset animator state
-        if (animator != null)
-        {
-            animator.ResetTrigger("Die");
-            animator.SetFloat("Speed", 0f);
-        }
-
-        cachedTransform.position = Vector3.zero;
-        cachedTransform.rotation = Quaternion.identity;
-        gameObject.SetActive(false);
+        navAgent.enabled = false; // Important to fully reset nav state
     }
+
+    // Reset Transform - only reset rotation and scale, position will be set by WaveManager
+    cachedTransform.localRotation = originalRotation;
+    cachedTransform.localScale = originalScale;
+    // Don't reset position here - it causes spawning at 0,0,0
+
+    gameObject.SetActive(false);
+}
     #endregion
 
     #region Helper Methods

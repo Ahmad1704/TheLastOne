@@ -2,9 +2,9 @@ using UnityEngine;
 public class FastZigzagState : IEnemyState
 {
     private float zigzagTimer;
-    private float zigzagInterval = 1.2f; // Increased from 0.8f
+    private float zigzagInterval = 1.2f; 
     private Vector3 currentTarget;
-    private float destinationRadius = 12f; // Reduced from 15f
+    private float destinationRadius = 12f; 
 
     public void Enter(Enemy enemy)
     {
@@ -14,8 +14,8 @@ public class FastZigzagState : IEnemyState
         {
             navAgent.isStopped = false;
             navAgent.speed = enemy.MoveSpeed;
-            navAgent.acceleration = 8f; // Reduced from 12f
-            navAgent.angularSpeed = 270f; // Reduced from 540f
+            navAgent.acceleration = 8f; 
+            navAgent.angularSpeed = 270f; 
         }
         SetNewZigzagTarget(enemy);
     }
@@ -28,7 +28,7 @@ public class FastZigzagState : IEnemyState
         zigzagTimer += Time.deltaTime;
 
         if (zigzagTimer >= zigzagInterval ||
-            (!navAgent.pathPending && navAgent.remainingDistance < 3f)) // Increased threshold
+            (!navAgent.pathPending && navAgent.remainingDistance < 3f)) 
         {
             SetNewZigzagTarget(enemy);
             zigzagTimer = 0f;
@@ -38,10 +38,10 @@ public class FastZigzagState : IEnemyState
     private void SetNewZigzagTarget(Enemy enemy)
     {
         var enemyTransform = enemy.CachedTransform;
-        Vector3 toCenter = -enemyTransform.position.normalized; // Simplified calculation
-        Vector3 perpendicular = new Vector3(-toCenter.z, 0, toCenter.x); // Avoid Vector3.Cross
+        Vector3 toCenter = -enemyTransform.position.normalized; 
+        Vector3 perpendicular = new Vector3(-toCenter.z, 0, toCenter.x); 
 
-        float zigzagStrength = Random.Range(-0.5f, 0.5f); // Reduced range
+        float zigzagStrength = Random.Range(-0.5f, 0.5f);
         Vector3 targetDirection = (toCenter + perpendicular * zigzagStrength).normalized;
 
         currentTarget = enemyTransform.position + targetDirection * destinationRadius;

@@ -29,7 +29,7 @@ public class AmmoManager : MonoBehaviour
     private void InitializeAmmo()
     {
         // Initialize all ammo types to 0
-        foreach (AmmoType type in System.Enum.GetValues(typeof(AmmoType)))
+        foreach (AmmoType type in Enum.GetValues(typeof(AmmoType)))
         {
             ammoInventory[type] = 0;
         }
@@ -72,8 +72,6 @@ public class AmmoManager : MonoBehaviour
         OnAmmoChanged?.Invoke(type, ammoInventory[type]);
     }
 }
-
-[System.Serializable]
 public class AmmoInventoryItem
 {
     public AmmoType ammoType;

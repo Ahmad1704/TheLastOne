@@ -6,6 +6,8 @@ using UnityEngine.UI;
 
 public class WaveManager : MonoBehaviour
 {
+    #region Inspector Variables
+
     [Header("Wave Settings")]
     [SerializeField] private int enemyIncreasePerWave = 10;
     [SerializeField] private float timeBetweenWaves = 5f;
@@ -16,11 +18,19 @@ public class WaveManager : MonoBehaviour
 
     [Header("UI Elements")]
     [SerializeField] private TextMeshProUGUI waveNumberText;
+    [SerializeField] private TextMeshProUGUI waveNumberTextB;
     [SerializeField] private TextMeshProUGUI enemyCountText;
+    [SerializeField] private TextMeshProUGUI enemyCountTextB;
     [SerializeField] private TextMeshProUGUI fpsText;
+    [SerializeField] private TextMeshProUGUI fpsTextB;
     [SerializeField] private Button stopResumeButton;
     [SerializeField] private Button nextWaveButton;
     [SerializeField] private Button destroyWaveButton;
+
+    #endregion
+
+    #region Private Variables
+
     private TextMeshProUGUI stopResumeButtonText;
     private TextMeshProUGUI nextWaveButtonText;
     private TextMeshProUGUI destroyWaveButtonText;
@@ -39,56 +49,52 @@ public class WaveManager : MonoBehaviour
     private const float fpsUpdateInterval = 0.5f;
     private int cachedFps = 60;
 
+    #endregion
+
+    #region Unity Lifecycle
+
     private void Awake()
     {
         InitializeEnemyPool();
         CacheUIButtonTexts();
         SetupButtonListeners();
     }
-    
+
     private void Start()
     {
         waveCoroutine = StartCoroutine(WaveLoop());
     }
-    
+
     private void Update()
     {
         UpdateUI();
         UpdateFPS();
         HandleKeyboardInput();
     }
-    
-    private void HandleKeyboardInput()
+
+    private void OnDrawGizmosSelected()
     {
-        if (Input.GetKeyDown(KeyCode.Alpha1))
-        {
-            ToggleWaves();
-        }
-
-        if (Input.GetKeyDown(KeyCode.Alpha2))
-        {
-            SpawnNextWave();
-        }
-
-        if (Input.GetKeyDown(KeyCode.Alpha3))
-        {
-            DestroyCurrentWave();
-        }
+        Gizmos.color = Color.cyan;
+        Gizmos.DrawWireSphere(transform.position, arenaRadius);
     }
-    
+
+    #endregion
+
+    #region Initialization Methods
+
     private void InitializeEnemyPool()
     {
         enemyPool = GetComponent<EnemyPool>() ?? gameObject.AddComponent<EnemyPool>();
         enemyPool.Initialize(enemyPrefabs);
     }
-    
+
     private void CacheUIButtonTexts()
     {
         stopResumeButtonText = stopResumeButton.GetComponentInChildren<TextMeshProUGUI>();
         nextWaveButtonText = nextWaveButton.GetComponentInChildren<TextMeshProUGUI>();
         destroyWaveButtonText = destroyWaveButton.GetComponentInChildren<TextMeshProUGUI>();
     }
-    
+
     private void SetupButtonListeners()
     {
         stopResumeButton.onClick.AddListener(ToggleWaves);
@@ -96,11 +102,18 @@ public class WaveManager : MonoBehaviour
         destroyWaveButton.onClick.AddListener(DestroyCurrentWave);
     }
 
+    #endregion
+
+    #region UI and FPS Updates
+
     private void UpdateUI()
     {
         waveNumberText.text = $"Wave: {currentWave}";
+        waveNumberTextB.text = $"Wave: {currentWave}";
         enemyCountText.text = $"Enemies: {activeEnemyCount}";
+        enemyCountTextB.text = $"Enemies: {activeEnemyCount}";
         fpsText.text = $"FPS: {cachedFps}";
+        fpsTextB.text = $"FPS: {cachedFps}";
         stopResumeButtonText.text = wavesPaused ? "Resume Waves" : "Stop Waves";
         nextWaveButtonText.text = waitingForNextWave ? "Waiting..." : "Next Wave";
         destroyWaveButtonText.text = activeEnemyCount > 0 ? "Destroy Wave" : "No Enemies";
@@ -116,6 +129,21 @@ public class WaveManager : MonoBehaviour
         }
     }
 
+    #endregion
+
+    #region Input Handling
+
+    private void HandleKeyboardInput()
+    {
+        if (Input.GetKeyDown(KeyCode.Alpha1)) ToggleWaves();
+        if (Input.GetKeyDown(KeyCode.Alpha2)) SpawnNextWave();
+        if (Input.GetKeyDown(KeyCode.Alpha3)) DestroyCurrentWave();
+    }
+
+    #endregion
+
+    #region Wave Logic
+
     private IEnumerator WaveLoop()
     {
         while (true)
@@ -124,7 +152,6 @@ public class WaveManager : MonoBehaviour
             {
                 yield return StartCoroutine(SpawnWaveCoroutine());
 
-                // Skip the "wait for enemies to die" part when manually spawning
                 if (!waitingForNextWave)
                 {
                     yield return new WaitUntil(() => activeEnemyCount == 0);
@@ -142,7 +169,6 @@ public class WaveManager : MonoBehaviour
             yield return null;
         }
     }
-
 
     private IEnumerator SpawnWaveCoroutine()
     {
@@ -183,7 +209,6 @@ public class WaveManager : MonoBehaviour
 
         if (!enemyObj) return;
 
-        // Calculate proper Y position based on model bounds
         float yOffset = CalculateYOffset(enemyObj);
         Vector3 spawnPos = new Vector3(pos2D.x, yOffset, pos2D.y);
 
@@ -198,34 +223,28 @@ public class WaveManager : MonoBehaviour
         }
     }
 
-
     private float CalculateYOffset(GameObject enemyObj)
     {
-        // Get the renderer bounds to calculate proper Y offset
         Renderer renderer = enemyObj.GetComponentInChildren<Renderer>();
         if (renderer != null)
         {
-            // Get the bottom of the model's bounds
-            float modelHeight = renderer.bounds.size.y;
             float bottomOffset = renderer.bounds.center.y - renderer.bounds.min.y;
-
-            // Position so the bottom of the model is at y=0
             return bottomOffset;
         }
 
-        // Fallback to a reasonable default
         return 1f;
     }
 
+    #endregion
+
+    #region Public Methods
 
     public void OnEnemyDestroyed(Enemy enemy)
     {
         if (!activeEnemies.Remove(enemy)) return;
-
         activeEnemyCount--;
-        
     }
-    
+
     public void OnEnemyReadyForPool(Enemy enemy, GameObject enemyGameObject)
     {
         enemyPool.ReturnEnemy(enemyGameObject);
@@ -243,32 +262,22 @@ public class WaveManager : MonoBehaviour
 
     public void SpawnNextWave()
     {
-        // Always allow spawning next wave, regardless of current state
-        if (waveCoroutine != null)
-        {
-            StopCoroutine(waveCoroutine);
-        }
+        if (waveCoroutine != null) StopCoroutine(waveCoroutine);
 
         currentWave++;
-        waitingForNextWave = false; // Reset waiting state
-        wavesPaused = false; // Ensure waves aren't paused
+        waitingForNextWave = false;
+        wavesPaused = false;
         waveCoroutine = StartCoroutine(WaveLoop());
     }
 
-    
     public void DestroyCurrentWave()
     {
         for (int i = activeEnemies.Count - 1; i >= 0; i--)
         {
             Health h = activeEnemies[i].GetComponent<Health>();
-            if (h != null)
-                h.TakeDamage(h.GetCurrentHealth());
+            if (h != null) h.TakeDamage(h.GetCurrentHealth());
         }
     }
 
-    private void OnDrawGizmosSelected()
-    {
-        Gizmos.color = Color.cyan;
-        Gizmos.DrawWireSphere(transform.position, arenaRadius);
-    }
+    #endregion
 }

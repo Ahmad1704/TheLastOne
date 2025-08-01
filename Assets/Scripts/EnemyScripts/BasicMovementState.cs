@@ -1,7 +1,7 @@
 using UnityEngine;
 public class BasicMovementState : IEnemyState
 {
-    private float destinationUpdateRate = 1f; // Increased from 0.5f for web
+    private float destinationUpdateRate = 1f; 
     private float lastDestinationUpdate;
     private Vector3 cachedTargetPosition;
 
@@ -12,8 +12,8 @@ public class BasicMovementState : IEnemyState
         {
             navAgent.isStopped = false;
             navAgent.speed = enemy.MoveSpeed;
-            navAgent.acceleration = 6f; // Reduced from 8f
-            navAgent.angularSpeed = 180f; // Reduced from 360f
+            navAgent.acceleration = 6f; 
+            navAgent.angularSpeed = 180f; 
         }
     }
 

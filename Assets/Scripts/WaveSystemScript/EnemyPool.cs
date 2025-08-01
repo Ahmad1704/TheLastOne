@@ -88,16 +88,6 @@ public class EnemyPool : MonoBehaviour
             Destroy(enemy);
         }
     }
-    
-    // Optional: Method to get pool statistics for debugging
-    public void LogPoolStats()
-    {
-        for (int i = 0; i < enemyPrefabs.Length; i++)
-        {
-            Debug.Log($"Pool {i} ({enemyPrefabs[i].name}): {enemyPools[i].Count} available");
-        }
-    }
-    
     // Clean up the type mapping when objects are destroyed
     void OnDestroy()
     {
