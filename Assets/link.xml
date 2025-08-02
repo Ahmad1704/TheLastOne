@@ -1,4 +1,29 @@
 <linker>
+  <assembly fullname="Assembly-CSharp">
+    <!-- AI States -->
+    <type fullname="SpawningState" preserve="all"/>
+    <type fullname="HeavyChargeState" preserve="all"/>
+    <type fullname="FastZigzagState" preserve="all"/>
+    <type fullname="BasicMovementState" preserve="all"/>
+    <type fullname="DeadState" preserve="all"/>
+
+    <!-- Weapon-related scripts -->
+    <type fullname="FirePointFinder" preserve="all"/>
+    <type fullname="WeaponHandler" preserve="all"/>
+    <type fullname="WeaponData" preserve="all"/>
+    <type fullname="WeaponPrefabData" preserve="all"/>
+    <type fullname="WeaponUI" preserve="all"/>
+    <type fullname="Projectile" preserve="all"/>
+    <type fullname="AmmoManager" preserve="all"/>
+    <type fullname="AmmoInventoryItem" preserve="all"/>
+  </assembly>
+
+  <!-- Core Unity components -->
+  <assembly fullname="UnityEngine.CoreModule">
+    <type fullname="UnityEngine.MeshFilter" preserve="all"/>
+    <type fullname="UnityEngine.MeshRenderer" preserve="all"/>
+  </assembly>
+
   <assembly fullname="UnityEngine.PhysicsModule">
     <type fullname="UnityEngine.SphereCollider" preserve="all"/>
   </assembly>

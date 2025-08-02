@@ -177,6 +177,7 @@ MonoBehaviour:
   eyeTransforms:
   - {fileID: 2180607364689069914}
   - {fileID: 2135669217044089537}
+  eyeSpherePrefab: {fileID: 1006317898398006367, guid: bc19a9460df6103449f4309ff864762c, type: 3}
   stoppingDistance: 1
   navMeshAreaMask: -1
 --- !u!54 &-5660286861775852854

@@ -16,6 +16,7 @@ public class Enemy : MonoBehaviour
     [Header("Visual Effects")]
     [SerializeField] private Material eyeGlowMaterial;
     [SerializeField] private Transform[] eyeTransforms;
+    [SerializeField] private GameObject eyeSpherePrefab; // NEW: Prefab reference instead of dynamic creation
 
     [Header("NavMesh Settings")]
     [SerializeField] private float stoppingDistance = 1f;
@@ -269,71 +270,61 @@ public class Enemy : MonoBehaviour
 
     private void SetupGlowingEyes()
     {
-        if (eyeGlowMaterial == null || eyeTransforms.Length == 0) return;
+        // Return early if no prefab is assigned or no eye transforms
+        if (eyeSpherePrefab == null || eyeTransforms.Length == 0) return;
 
         foreach (Transform eyeTransform in eyeTransforms)
         {
-            // Create an empty GameObject         
-            GameObject eye = new GameObject("Eye");
-            eye.transform.SetParent(eyeTransform, false);
+            // Instantiate the prefab instead of creating from scratch
+            GameObject eye = Instantiate(eyeSpherePrefab, eyeTransform);
+            eye.name = "Eye";
             eye.transform.localPosition = Vector3.zero;
             eye.transform.localScale = Vector3.one;
 
-            // Add a MeshFilter and assign sphere mesh         
-            MeshFilter meshFilter = eye.AddComponent<MeshFilter>();
-
-            // URP-compatible mesh loading
-#if UNITY_2020_2_OR_NEWER
-            meshFilter.mesh = Resources.GetBuiltinResource<Mesh>("New-Sphere.fbx");
-#else
-            meshFilter.mesh = Resources.GetBuiltinResource<Mesh>("Sphere.fbx");
-#endif
-
-            // Add a MeshRenderer and assign a new material instance         
-            MeshRenderer renderer = eye.AddComponent<MeshRenderer>();
-            Material eyeMaterial = new Material(eyeGlowMaterial); // Clone to avoid modifying shared material         
-            renderer.material = eyeMaterial;
-
-            // Add sphere collider for physics/collision detection
-            SphereCollider sphereCollider = eye.AddComponent<SphereCollider>();
-            sphereCollider.radius = 0.5f; // Default sphere radius, adjust as needed
-            sphereCollider.isTrigger = false; // Set to true if you want trigger events instead of collision          
-
-            // Choose eye color based on enemy type         
-            Color eyeColor = enemyType switch
+            // Get the renderer from the prefab (should already be set up)
+            MeshRenderer renderer = eye.GetComponent<MeshRenderer>();
+            if (renderer != null && eyeGlowMaterial != null)
             {
-                EnemyType.Fast => Color.blue,
-                EnemyType.Heavy => Color.yellow,
-                _ => Color.red
-            };
+                // Create a new material instance to avoid modifying shared material
+                Material eyeMaterial = new Material(eyeGlowMaterial);
+                renderer.material = eyeMaterial;
 
-            // URP Material Setup
-            // Set base color (URP standard)
-            eyeMaterial.SetColor("_BaseColor", eyeColor);
+                // Choose eye color based on enemy type
+                Color eyeColor = enemyType switch
+                {
+                    EnemyType.Fast => Color.blue,
+                    EnemyType.Heavy => Color.yellow,
+                    _ => Color.red
+                };
 
-            // Enable emission
-            eyeMaterial.EnableKeyword("_EMISSION");
-            eyeMaterial.SetColor("_EmissionColor", eyeColor * 3f); // Boost glow intensity
+                // URP Material Setup
+                // Set base color (URP standard)
+                eyeMaterial.SetColor("_BaseColor", eyeColor);
 
-            // Alternative URP emission property names (try both for compatibility)
-            if (eyeMaterial.HasProperty("_EmissiveColor"))
-            {
-                eyeMaterial.SetColor("_EmissiveColor", eyeColor * 3f);
-            }
+                // Enable emission
+                eyeMaterial.EnableKeyword("_EMISSION");
+                eyeMaterial.SetColor("_EmissionColor", eyeColor * 3f); // Boost glow intensity
 
-            // Set emission intensity if available
-            if (eyeMaterial.HasProperty("_EmissiveIntensity"))
-            {
-                eyeMaterial.SetFloat("_EmissiveIntensity", 3f);
-            }
+                // Alternative URP emission property names (try both for compatibility)
+                if (eyeMaterial.HasProperty("_EmissiveColor"))
+                {
+                    eyeMaterial.SetColor("_EmissiveColor", eyeColor * 3f);
+                }
 
-            // Ensure real-time emission (important for baked/global illumination systems)         
-            eyeMaterial.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
+                // Set emission intensity if available
+                if (eyeMaterial.HasProperty("_EmissiveIntensity"))
+                {
+                    eyeMaterial.SetFloat("_EmissiveIntensity", 3f);
+                }
 
-            // URP-specific: Enable HDR emission if supported
-            if (eyeMaterial.HasProperty("_UseEmissiveIntensity"))
-            {
-                eyeMaterial.SetFloat("_UseEmissiveIntensity", 1f);
+                // Ensure real-time emission (important for baked/global illumination systems)
+                eyeMaterial.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
+
+                // URP-specific: Enable HDR emission if supported
+                if (eyeMaterial.HasProperty("_UseEmissiveIntensity"))
+                {
+                    eyeMaterial.SetFloat("_UseEmissiveIntensity", 1f);
+                }
             }
         }
     }

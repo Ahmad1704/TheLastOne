@@ -443,7 +443,7 @@ public class CameraManager : MonoBehaviour
 
         string mode = isFirstPerson ? "First Person (FPS)" : "Free Camera (Spectator)";
         GUI.Label(new Rect(10, 10, 300, 30), $"Mode: {mode}", style);
-        GUI.Label(new Rect(10, 30, 300, 30), $"Press '{toggleModeKey}' to toggle mode", style);
+        GUI.Label(new Rect(10, 30, 300, 30), $"Press '{toggleModeKey}' to toggle mode between first person and free Camera", style);
 
         if (isFirstPerson)
         {
