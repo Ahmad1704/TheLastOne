@@ -13,6 +13,13 @@ public class Enemy : MonoBehaviour
     [SerializeField] private float moveSpeed = 5f;
     [SerializeField] private EnemyType enemyType;
 
+    [Header("Ammo Drop Settings")]
+    [SerializeField] private bool canDropAmmo = true;
+    [SerializeField] private float ammoDropChance = 0.3f; // 30% chance by default
+    [SerializeField] private GameObject ammoPickupPrefab;
+    [SerializeField] private AmmoType dropAmmoType = AmmoType.Rifle;
+    [SerializeField] private int dropAmmoAmount = 30;
+
     [Header("Visual Effects")]
     [SerializeField] private Material eyeGlowMaterial;
     [SerializeField] private Transform[] eyeTransforms;
@@ -359,11 +366,71 @@ public class Enemy : MonoBehaviour
     }
     #endregion
 
+    #region Ammo Drop Methods
+    private void TryDropAmmo()
+    {
+        // Check if this enemy can drop ammo and if we have a prefab
+        if (!canDropAmmo || ammoPickupPrefab == null)
+            return;
+
+        // Roll for drop chance
+        if (Random.value <= ammoDropChance)
+        {
+            DropAmmo();
+        }
+    }
+
+    private void DropAmmo()
+    {
+        // Get a position slightly above the enemy for the drop
+        Vector3 dropPosition = cachedTransform.position + Vector3.up * 0.5f;
+        
+        // Add some random offset so multiple drops don't stack perfectly
+        Vector3 randomOffset = new Vector3(
+            Random.Range(-0.5f, 0.5f),
+            0f,
+            Random.Range(-0.5f, 0.5f)
+        );
+        dropPosition += randomOffset;
+
+        // Instantiate the ammo pickup
+        GameObject ammoPickup = Instantiate(ammoPickupPrefab, dropPosition, Quaternion.identity);
+        
+        // Configure the pickup with our settings
+        AmmoPickup pickup = ammoPickup.GetComponent<AmmoPickup>();
+        if (pickup != null)
+        {
+            pickup.ammoType = dropAmmoType;
+            pickup.ammoAmount = dropAmmoAmount;
+        }
+
+        // Optional: Add some physics to make it feel more natural
+        Rigidbody rb = ammoPickup.GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            // Add a small upward force
+            rb.AddForce(Vector3.up * 2f + Random.insideUnitSphere * 1f, ForceMode.Impulse);
+        }
+    }
+
+    // Public method to configure ammo drops (useful for wave manager to set different drop rates)
+    public void ConfigureAmmoDrop(bool canDrop, float dropChance, AmmoType ammoType, int ammoAmount)
+    {
+        canDropAmmo = canDrop;
+        ammoDropChance = dropChance;
+        dropAmmoType = ammoType;
+        dropAmmoAmount = ammoAmount;
+    }
+    #endregion
+
     #region Public Methods
     public void OnEnemyDied()
     {
         if (isDead) return;
         isDead = true;
+        
+        // Try to drop ammo when enemy dies
+        TryDropAmmo();
         
         // Notify wave manager immediately to decrement counter
         waveManager?.OnEnemyDestroyed(this);
@@ -444,13 +511,22 @@ public class Enemy : MonoBehaviour
                 moveSpeed *= 1.8f;
                 if (healthComponent != null) healthComponent.maxHealth *= 0.7f;
                 cachedTransform.localScale = originalScale * 0.8f;
+                // Fast enemies drop less ammo but more frequently
+                dropAmmoAmount = Mathf.RoundToInt(dropAmmoAmount * 0.7f);
+                ammoDropChance *= 1.2f;
                 break;
             case EnemyType.Heavy:
                 moveSpeed *= 0.5f;
                 if (healthComponent != null) healthComponent.maxHealth *= 1.8f;
                 cachedTransform.localScale = originalScale * 1.3f;
+                // Heavy enemies drop more ammo but less frequently
+                dropAmmoAmount = Mathf.RoundToInt(dropAmmoAmount * 1.5f);
+                ammoDropChance *= 0.8f;
                 break;
         }
+        
+        // Clamp drop chance to reasonable bounds
+        ammoDropChance = Mathf.Clamp01(ammoDropChance);
     }
 
     private void UpdateMovementAnimation()

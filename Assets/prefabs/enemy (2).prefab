@@ -142,6 +142,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   moveSpeed: 5
   enemyType: 2
+  canDropAmmo: 1
+  ammoDropChance: 0.3
+  ammoPickupPrefab: {fileID: 228878281233080002, guid: 8c3cbd5eaf93f974f99822f2bec85ed3, type: 3}
+  dropAmmoType: 1
+  dropAmmoAmount: 30
   eyeGlowMaterial: {fileID: 2100000, guid: fcdeebc3f9429f3488cc3537476ab468, type: 2}
   eyeTransforms:
   - {fileID: 6829937517504761298}

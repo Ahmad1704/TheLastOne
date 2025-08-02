@@ -1,12 +1,19 @@
 using UnityEngine;
 using System.Collections;
-
+using TMPro; 
 public class WeaponHandler : MonoBehaviour
 {
     [Header("References")]
-    public Transform weaponHolder;
-    public Camera playerCamera;
-    public AudioSource audioSource;
+    [SerializeField] private Transform weaponHolder;
+    [SerializeField] private Camera playerCamera;
+    [SerializeField] private AudioSource audioSource;
+
+    [Header("Ammo Display")]
+    [SerializeField] private TextMeshProUGUI ammoText;
+    [SerializeField] private AmmoType currentWeaponAmmoType = AmmoType.Rifle;
+    [SerializeField] private TextMeshProUGUI reserveText;
+
+
 
     [Header("Current State")]
     public WeaponData currentWeapon;
@@ -61,17 +68,10 @@ public class WeaponHandler : MonoBehaviour
             ? hit.point
             : ray.GetPoint(currentWeapon.range);
     }
-
-    private Vector3 GetFireDirection()
+    private void Update()
     {
-        if (playerCamera == null)
-            return currentFirePoint.forward;
-
-        Vector3 targetPoint = GetTargetPoint();
-        return (targetPoint - currentFirePoint.position).normalized;
+        UpdateAmmoDisplay(currentAmmoInMag, currentWeaponAmmoType, currentWeapon?.magazineSize ?? -1);
     }
-
-
     private void SetupWeaponInstance()
     {
         if (currentWeaponInstance != null)
@@ -140,39 +140,6 @@ public class WeaponHandler : MonoBehaviour
 
         UpdateAmmoUI();
     }
-    public void FireMultiple(int shotCount)
-    {
-        if (!CanFire()) return;
-
-        Vector3 baseFireDirection = GetFireDirection();
-
-        for (int i = 0; i < shotCount && CanFire(); i++)
-        {
-            Vector3 spreadDirection = baseFireDirection;
-
-            if (i > 0)
-            {
-                float spread = 5f;
-                // Apply spread to the direction
-                Quaternion spreadRotation = Quaternion.Euler(
-                    Random.Range(-spread, spread),
-                    Random.Range(-spread, spread),
-                    0);
-                spreadDirection = spreadRotation * baseFireDirection;
-            }
-
-            Quaternion fireRotation = Quaternion.LookRotation(spreadDirection);
-            SpawnBullet(currentFirePoint.position, fireRotation);
-        }
-
-        currentAmmoInMag--;
-        PlaySound(currentWeapon.fireSound);
-        if (currentAmmoInMag <= 0)
-            isEmpty = true;
-
-        UpdateAmmoUI();
-    }
-
     private void SpawnBullet(Vector3 position, Quaternion rotation)
     {
         GameObject bullet = Instantiate(currentWeapon.bulletPrefab, position, rotation);
@@ -350,12 +317,54 @@ public class WeaponHandler : MonoBehaviour
 #endif
     }
 
+    public void UpdateAmmoDisplay(int magazineAmmo, AmmoType weaponAmmoType, int magazineCapacity = -1)
+    {
+        currentAmmoInMag = magazineAmmo;
+        currentWeaponAmmoType = weaponAmmoType;
+
+        if (magazineCapacity > 0)
+        {
+            currentWeapon.magazineSize = magazineCapacity;
+        }
+
+        // Get reserve ammo from AmmoManager
+        int reserveAmmo = 0;
+        if (AmmoManager.Instance != null)
+        {
+            reserveAmmo = AmmoManager.Instance.GetAmmo(weaponAmmoType);
+        }
+
+        // Update the main ammo text (common format: "30 / 120")
+        if (ammoText != null)
+        {
+            ammoText.text = $"{magazineAmmo} / {currentWeapon.magazineSize}";
+
+            // Optional: Change color based on ammo status
+            if (magazineAmmo == 0)
+            {
+                ammoText.color = Color.red; // Empty magazine
+            }
+            else if (magazineAmmo <= currentWeapon.magazineSize * 0.3f)
+            {
+                ammoText.color = Color.yellow; // Low ammo warning
+            }
+            else
+            {
+                ammoText.color = Color.white; // Normal
+            }
+        }
+        // Update separate reserve text if you have one
+        if (reserveText != null)
+        {
+            reserveText.text = $"{reserveAmmo}";
+            reserveText.color = reserveAmmo > 0 ? Color.white : Color.gray;
+        }
+    }
+
     // Optional debug UI
     private void OnGUI()
     {
-#if UNITY_EDITOR
         if (currentWeapon == null) return;
-
         GUILayout.BeginArea(new Rect(10, 10, 300, 300));
         GUILayout.Label($"Weapon: {currentWeapon.weaponName}");
         GUILayout.Label($"Prefab: {(currentWeaponInstance != null ? "Loaded" : "None")}");
@@ -364,10 +373,6 @@ public class WeaponHandler : MonoBehaviour
         GUILayout.Label($"Reserve: {AmmoManager.Instance.GetAmmo(currentWeapon.ammoType)}");
         GUILayout.Label($"Reloading: {isReloading}");
         GUILayout.Label($"Empty: {isEmpty}");
-
-        if (GUILayout.Button("Add 30 Ammo"))
-            AmmoManager.Instance.AddAmmo(currentWeapon.ammoType, 30);
         GUILayout.EndArea();
-#endif
     }
 }
