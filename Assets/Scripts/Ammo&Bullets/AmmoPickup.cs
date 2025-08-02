@@ -12,19 +12,62 @@ public class AmmoPickup : MonoBehaviour
     
     [Header("Pickup Settings")]
     public float pickupRadius = 2f;
-    public float playerSearchInterval = 0.5f; // How often to search for player if not found
     
     private bool hasBeenPickedUp = false;
     private GameObject playerObject;
-    private float lastPlayerSearchTime;
     private float lastProximityCheckTime;
 
     void Start()
     {
         SetupCollider();
-        // Don't search for player here - do it dynamically
-        lastPlayerSearchTime = Time.time;
-        lastProximityCheckTime = Time.time;
+        
+        // Try to find player immediately
+        FindPlayer();
+        
+        // If not found, subscribe to player spawn event or use coroutine
+        if (playerObject == null)
+        {
+            StartCoroutine(WaitForPlayerSpawn());
+        }
+        
+        // Auto-destroy after 20 seconds if not picked up
+        Invoke(nameof(AutoDestroy), 20f);
+    }
+
+    void OnEnable()
+    {
+        // Subscribe to player spawn events if you have an event system
+        // PlayerSpawner.OnPlayerSpawned += OnPlayerSpawned;
+        // GameManager.OnPlayerReady += OnPlayerSpawned;
+    }
+
+    void OnDisable()
+    {
+        // Unsubscribe from events
+        // PlayerSpawner.OnPlayerSpawned -= OnPlayerSpawned;
+        // GameManager.OnPlayerReady -= OnPlayerSpawned;
+    }
+
+    // Event handler for when player spawns
+    private void OnPlayerSpawned(GameObject player)
+    {
+        if (playerObject == null)
+        {
+            playerObject = player;
+            Debug.Log($"AmmoPickup: Player spawned and registered: {player.name}");
+        }
+    }
+
+    // Coroutine to wait for player spawn (alternative to Update searching)
+    private System.Collections.IEnumerator WaitForPlayerSpawn()
+    {
+        while (playerObject == null)
+        {
+            yield return new WaitForSeconds(0.5f); // Check every 0.5 seconds
+            FindPlayer();
+        }
+        
+        Debug.Log($"AmmoPickup: Found player after waiting: {playerObject.name}");
     }
 
     private void SetupCollider()
@@ -54,14 +97,8 @@ public class AmmoPickup : MonoBehaviour
     {
         if (hasBeenPickedUp) return;
 
-        // Periodically search for player if we don't have one
-        if (playerObject == null && Time.time - lastPlayerSearchTime >= playerSearchInterval)
-        {
-            FindPlayer();
-            lastPlayerSearchTime = Time.time;
-        }
-
-        // Check proximity if we have a player reference
+        // Only check proximity if we have a player reference
+        // No more player searching in Update!
         if (playerObject != null && Time.time - lastProximityCheckTime >= 0.1f)
         {
             CheckPlayerProximity();
@@ -93,12 +130,6 @@ public class AmmoPickup : MonoBehaviour
                 playerObject = fpController.gameObject;
             }
         }
-
-        // Log when player is found (useful for debugging)
-        if (playerObject != null)
-        {
-            Debug.Log($"AmmoPickup: Found player '{playerObject.name}' at {Time.time:F1}s");
-        }
     }
 
     private void CheckPlayerProximity()
@@ -129,6 +160,7 @@ public class AmmoPickup : MonoBehaviour
             if (playerObject == null)
             {
                 playerObject = other.gameObject;
+                Debug.Log($"AmmoPickup: Player found via trigger: {other.gameObject.name}");
             }
             
             PickupAmmo();
@@ -149,6 +181,7 @@ public class AmmoPickup : MonoBehaviour
             if (playerObject == null)
             {
                 playerObject = other.gameObject;
+                Debug.Log($"AmmoPickup: Player found via trigger stay: {other.gameObject.name}");
             }
             
             PickupAmmo();
@@ -159,6 +192,9 @@ public class AmmoPickup : MonoBehaviour
     {
         if (hasBeenPickedUp) return;
         hasBeenPickedUp = true;
+
+        // Cancel the auto-destroy since we're being picked up
+        CancelInvoke(nameof(AutoDestroy));
 
         // Double-check AmmoManager exists
         if (AmmoManager.Instance == null)
@@ -222,6 +258,15 @@ public class AmmoPickup : MonoBehaviour
         }
     }
 
+    private void AutoDestroy()
+    {
+        if (!hasBeenPickedUp && gameObject != null)
+        {
+            Debug.Log($"AmmoPickup auto-destroyed after 20 seconds: {ammoAmount} {ammoType}");
+            Destroy(gameObject);
+        }
+    }
+
     // Visual debug
     void OnDrawGizmos()
     {
@@ -240,6 +285,25 @@ public class AmmoPickup : MonoBehaviour
             // Show that we're looking for player
             Gizmos.color = Color.red;
             Gizmos.DrawWireCube(transform.position + Vector3.up * 2f, Vector3.one * 0.5f);
+        }
+    }
+
+    // Debug info for WebGL builds
+    void OnGUI()
+    {
+        // Only show in development builds
+        if (Debug.isDebugBuild)
+        {
+            string playerStatus = playerObject != null ? $"Found: {playerObject.name}" : "Searching...";
+            GUI.Box(new Rect(10, 10, 200, 60), "");
+            GUI.Label(new Rect(15, 15, 190, 20), $"Player: {playerStatus}");
+            
+            if (playerObject != null)
+            {
+                float dist = Vector3.Distance(transform.position, playerObject.transform.position);
+                GUI.Label(new Rect(15, 35, 190, 20), $"Distance: {dist:F2}");
+                GUI.Label(new Rect(15, 50, 190, 20), dist <= pickupRadius ? "CAN PICKUP" : "Too far");
+            }
         }
     }
 }
