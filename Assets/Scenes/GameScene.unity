@@ -3479,7 +3479,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2024341831}
-  - component: {fileID: 2024341830}
+  - component: {fileID: 2024341837}
   - component: {fileID: 2024341833}
   - component: {fileID: 2024341832}
   - component: {fileID: 2024341834}
@@ -3492,18 +3492,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &2024341830
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2024341829}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 53251929ef085ec4b9bf27451b02298e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!4 &2024341831
 Transform:
   m_ObjectHideFlags: 0
@@ -3543,7 +3531,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9b2f9ed19ecbc124aa9df7469bdce1ce, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  enemyIncreasePerWave: 20
+  enemyIncreasePerWave: 10
   timeBetweenWaves: 5
   arenaRadius: 40
   enemyPrefabs:
@@ -3625,6 +3613,18 @@ MonoBehaviour:
   reloadText: {fileID: 1066432368}
   blinkSpeed: 5
   minAlpha: 0.3
+--- !u!114 &2024341837
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2024341829}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 53251929ef085ec4b9bf27451b02298e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &3143790778652442
 GameObject:
   m_ObjectHideFlags: 0

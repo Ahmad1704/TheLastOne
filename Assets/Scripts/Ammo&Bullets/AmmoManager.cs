@@ -72,6 +72,7 @@ public class AmmoManager : MonoBehaviour
         OnAmmoChanged?.Invoke(type, ammoInventory[type]);
     }
 }
+[Serializable]
 public class AmmoInventoryItem
 {
     public AmmoType ammoType;

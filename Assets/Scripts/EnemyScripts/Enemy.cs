@@ -273,36 +273,68 @@ public class Enemy : MonoBehaviour
 
         foreach (Transform eyeTransform in eyeTransforms)
         {
-            GameObject eye = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            // Create an empty GameObject         
+            GameObject eye = new GameObject("Eye");
             eye.transform.SetParent(eyeTransform, false);
             eye.transform.localPosition = Vector3.zero;
             eye.transform.localScale = Vector3.one;
 
-            Renderer eyeRenderer = eye.GetComponent<Renderer>();
-            
-            // Create a new material instance to avoid modifying the shared material
-            Material eyeMaterial = new Material(eyeGlowMaterial);
-            eyeRenderer.material = eyeMaterial;
-            
+            // Add a MeshFilter and assign sphere mesh         
+            MeshFilter meshFilter = eye.AddComponent<MeshFilter>();
+
+            // URP-compatible mesh loading
+#if UNITY_2020_2_OR_NEWER
+            meshFilter.mesh = Resources.GetBuiltinResource<Mesh>("New-Sphere.fbx");
+#else
+            meshFilter.mesh = Resources.GetBuiltinResource<Mesh>("Sphere.fbx");
+#endif
+
+            // Add a MeshRenderer and assign a new material instance         
+            MeshRenderer renderer = eye.AddComponent<MeshRenderer>();
+            Material eyeMaterial = new Material(eyeGlowMaterial); // Clone to avoid modifying shared material         
+            renderer.material = eyeMaterial;
+
+            // Add sphere collider for physics/collision detection
+            SphereCollider sphereCollider = eye.AddComponent<SphereCollider>();
+            sphereCollider.radius = 0.5f; // Default sphere radius, adjust as needed
+            sphereCollider.isTrigger = false; // Set to true if you want trigger events instead of collision          
+
+            // Choose eye color based on enemy type         
             Color eyeColor = enemyType switch
             {
                 EnemyType.Fast => Color.blue,
                 EnemyType.Heavy => Color.yellow,
                 _ => Color.red
             };
-            
-            // Set up emission properly
+
+            // URP Material Setup
+            // Set base color (URP standard)
+            eyeMaterial.SetColor("_BaseColor", eyeColor);
+
+            // Enable emission
             eyeMaterial.EnableKeyword("_EMISSION");
-            eyeMaterial.SetColor("_EmissionColor", eyeColor * 3f);
-            
-            // Also set the base color for non-emissive rendering
-            eyeMaterial.SetColor("_Color", eyeColor);
-            eyeMaterial.SetColor("_BaseColor", eyeColor); // For URP
-            
-            // Ensure the material is set to emissive mode
+            eyeMaterial.SetColor("_EmissionColor", eyeColor * 3f); // Boost glow intensity
+
+            // Alternative URP emission property names (try both for compatibility)
+            if (eyeMaterial.HasProperty("_EmissiveColor"))
+            {
+                eyeMaterial.SetColor("_EmissiveColor", eyeColor * 3f);
+            }
+
+            // Set emission intensity if available
+            if (eyeMaterial.HasProperty("_EmissiveIntensity"))
+            {
+                eyeMaterial.SetFloat("_EmissiveIntensity", 3f);
+            }
+
+            // Ensure real-time emission (important for baked/global illumination systems)         
             eyeMaterial.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
-            
-            Destroy(eye.GetComponent<Collider>());
+
+            // URP-specific: Enable HDR emission if supported
+            if (eyeMaterial.HasProperty("_UseEmissiveIntensity"))
+            {
+                eyeMaterial.SetFloat("_UseEmissiveIntensity", 1f);
+            }
         }
     }
     #endregion
